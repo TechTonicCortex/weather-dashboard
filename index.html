@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg1: #0a1628;
+    --bg2: #0d1f3c;
+    --surface: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.1);
+    --text: #e8f0fe;
+    --dim: rgba(232,240,254,0.5);
+    --accent: #4fc3f7;
+    --card-r: 18px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg1);
+    transition: background 1.2s ease;
+    overflow-x: hidden;
+  }
+
+  body.clear         { --bg1:#0b1a2e; --bg2:#1a3a5c; --accent:#ffd54f; }
+  body.clouds        { --bg1:#1a1f2e; --bg2:#2d3348; --accent:#90a4ae; }
+  body.rain          { --bg1:#0d1b2a; --bg2:#1a2f45; --accent:#4fc3f7; }
+  body.drizzle       { --bg1:#0d1b2a; --bg2:#1a2f45; --accent:#80cbc4; }
+  body.thunderstorm  { --bg1:#0d0d1a; --bg2:#1a1a2e; --accent:#ce93d8; }
+  body.snow          { --bg1:#1a2030; --bg2:#2d3a4a; --accent:#e0f7fa; }
+  body.mist          { --bg1:#1a1f2a; --bg2:#252d3a; --accent:#b0bec5; }
+
+  .bg-gradient {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse at 15% 25%, var(--bg2) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 75%, rgba(79,195,247,0.07) 0%, transparent 50%),
+      var(--bg1);
+    transition: all 1.2s ease;
+  }
+
+  .page {
+    position: relative; z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 28px 20px 48px;
+  }
+
+  /* ── SEARCH ── */
+  .search-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .search-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 13px 22px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    outline: none;
+    backdrop-filter: blur(12px);
+    transition: border-color 0.2s;
+  }
+
+  .search-input::placeholder { color: var(--dim); }
+  .search-input:focus { border-color: var(--accent); }
+
+  .search-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 50px;
+    padding: 13px 24px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #000;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .search-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-r);
+    padding: 32px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(16px);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+    opacity: 0.07;
+    pointer-events: none;
+  }
+
+  .hero-city {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .hero-temp {
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+    margin-bottom: 6px;
+  }
+
+  .hero-desc {
+    font-size: 16px;
+    color: var(--dim);
+    text-transform: capitalize;
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: var(--dim);
+    flex-wrap: wrap;
+    font-weight: 500;
+  }
+
+  .hero-meta span { display: flex; align-items: center; gap: 4px; }
+  .hero-icon { font-size: 72px; line-height: 1; }
+
+  /* ── CARDS ── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-r);
+    padding: 18px;
+    backdrop-filter: blur(12px);
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.18); }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .card-value {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+
+  .card-sub { font-size: 11px; color: var(--dim); font-weight: 500; }
+
+  /* ── PROGRESS BAR ── */
+  .prog-bar {
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.1);
+    margin-top: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .prog-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  .prog-marker {
+    position: absolute;
+    top: -3px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: #fff;
+    transform: translateX(-50%);
+    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+    transition: left 0.8s ease;
+  }
+
+  /* ── POLLUTION CARD ── */
+  .pollution-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-r);
+    padding: 22px;
+    backdrop-filter: blur(12px);
+    margin-bottom: 14px;
+  }
+
+  .pollution-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .pollution-badge {
+    padding: 5px 14px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .pollution-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .pollutant {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .pollutant-name {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .pollutant-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .pollutant-unit { font-size: 9px; color: var(--dim); margin-top: 2px; }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+
+  /* ── HOURLY ── */
+  .hourly-row {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 14px;
+    scrollbar-width: none;
+  }
+
+  .hourly-row::-webkit-scrollbar { display: none; }
+
+  .hour-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: center;
+    min-width: 68px;
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .hour-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .hour-card.now { border-color: var(--accent); background: rgba(79,195,247,0.1); }
+  .hour-time { font-size: 10px; color: var(--dim); margin-bottom: 7px; font-weight: 600; }
+  .hour-icon { font-size: 20px; margin-bottom: 7px; }
+  .hour-temp { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .hour-rain { font-size: 10px; color: #4fc3f7; font-weight: 600; }
+
+  /* ── 7-DAY ── */
+  .week-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 14px;
+  }
+
+  .day-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    backdrop-filter: blur(12px);
+    transition: all 0.2s;
+  }
+
+  .day-row:hover { border-color: rgba(255,255,255,0.18); }
+  .day-name { font-size: 12px; font-weight: 700; width: 40px; }
+  .day-icon { font-size: 20px; }
+  .day-desc { flex: 1; font-size: 12px; color: var(--dim); text-transform: capitalize; font-weight: 500; }
+  .day-temps { font-size: 13px; font-weight: 700; }
+  .day-low { color: var(--dim); font-weight: 400; margin-left: 6px; }
+
+  /* ── OUTFIT ── */
+  .outfit-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-r);
+    padding: 20px;
+    backdrop-filter: blur(12px);
+    margin-bottom: 14px;
+  }
+
+  .outfit-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .outfit-chip {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ── SUN TIMES ── */
+  .sun-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .sun-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-r);
+    padding: 18px;
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .sun-icon { font-size: 28px; }
+  .sun-label { font-size: 10px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; font-weight: 600; margin-bottom: 3px; }
+  .sun-time { font-size: 20px; font-weight: 700; }
+
+  /* ── EMPTY / LOADING ── */
+  .message {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--dim);
+  }
+
+  .message .msg-icon { font-size: 44px; margin-bottom: 14px; }
+  .message p { font-size: 14px; font-weight: 500; }
+  .message .msg-sub { font-size: 12px; margin-top: 6px; opacity: 0.6; }
+
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .fade-in { animation: fadeIn 0.5s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  @media (max-width: 600px) {
+    .grid-4 { grid-template-columns: repeat(2,1fr); }
+    .hero-temp { font-size: 56px; }
+    .hero { padding: 22px; }
+    .pollution-grid { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body class="clear">
+
+<div class="bg-gradient"></div>
+
+<div class="page">
+
+  <div class="search-row">
+    <input class="search-input" id="cityInput" type="text" placeholder="Search any city... e.g. Toronto, London, Tokyo" value="Mississauga">
+    <button class="search-btn" onclick="fetchWeather()">Search</button>
+  </div>
+
+  <div id="content">
+    <div class="message">
+      <div class="msg-icon">🌤️</div>
+      <p>Enter a city to get started</p>
+      <p class="msg-sub">Real-time weather · Air quality · Hourly & weekly forecast</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── PASTE YOUR API KEY HERE ───────────────────────────────────────
+const API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY';
+
+// ── ICONS ─────────────────────────────────────────────────────────
+function icon(code) {
+  if (code >= 200 && code < 300) return '⛈️';
+  if (code >= 300 && code < 400) return '🌦️';
+  if (code >= 500 && code < 600) return code >= 511 ? '🌨️' : '🌧️';
+  if (code >= 600 && code < 700) return '❄️';
+  if (code >= 700 && code < 800) return '🌫️';
+  if (code === 800) return '☀️';
+  if (code === 801) return '🌤️';
+  if (code === 802) return '⛅';
+  if (code >= 803) return '☁️';
+  return '🌡️';
+}
+
+function bodyClass(code) {
+  if (code >= 200 && code < 300) return 'thunderstorm';
+  if (code >= 300 && code < 400) return 'drizzle';
+  if (code >= 500 && code < 600) return 'rain';
+  if (code >= 600 && code < 700) return 'snow';
+  if (code >= 700 && code < 800) return 'mist';
+  if (code === 800) return 'clear';
+  return 'clouds';
+}
+
+// ── AQI ───────────────────────────────────────────────────────────
+const AQI_INFO = [
+  { label:'Good',          color:'#4caf50', bg:'rgba(76,175,80,0.15)',   text:'Air is clean and healthy to breathe.' },
+  { label:'Fair',          color:'#8bc34a', bg:'rgba(139,195,74,0.15)',  text:'Air quality is acceptable for most people.' },
+  { label:'Moderate',      color:'#ffeb3b', bg:'rgba(255,235,59,0.15)',  text:'Sensitive groups may experience mild effects.' },
+  { label:'Poor',          color:'#ff9800', bg:'rgba(255,152,0,0.15)',   text:'Everyone may start to experience health effects.' },
+  { label:'Very Poor',     color:'#f44336', bg:'rgba(244,67,54,0.15)',   text:'Health warnings — limit outdoor activity.' },
+];
+
+function aqiInfo(aqi) { return AQI_INFO[Math.min(aqi-1, 4)]; }
+
+// ── UV ────────────────────────────────────────────────────────────
+function uvInfo(uv) {
+  if (uv <= 2)  return { label:'Low',       color:'#4caf50' };
+  if (uv <= 5)  return { label:'Moderate',  color:'#ffeb3b' };
+  if (uv <= 7)  return { label:'High',      color:'#ff9800' };
+  if (uv <= 10) return { label:'Very High', color:'#f44336' };
+  return              { label:'Extreme',    color:'#9c27b0' };
+}
+
+// ── OUTFIT ────────────────────────────────────────────────────────
+function outfit(temp, desc, wind, rain) {
+  const items = [], tips = [];
+  if (temp <= 0)       items.push('🧥 Heavy coat','🧤 Gloves','🧣 Scarf','👢 Winter boots');
+  else if (temp <= 8)  items.push('🧥 Warm coat','🧣 Scarf','👟 Closed shoes');
+  else if (temp <= 15) items.push('🧥 Light jacket','👖 Jeans','👟 Sneakers');
+  else if (temp <= 22) items.push('👕 Long sleeve','👖 Jeans or chinos');
+  else if (temp <= 28) items.push('👕 T-shirt','🩳 Shorts or light pants');
+  else                 items.push('👕 Light tee','🩳 Shorts','🧢 Cap');
+  if (rain || desc.includes('rain') || desc.includes('drizzle')) { items.push('☂️ Umbrella','🥾 Waterproof shoes'); tips.push('Bring an umbrella!'); }
+  if (wind > 10) items.push('🧥 Windbreaker');
+  if (desc.includes('clear') && temp > 20) { items.push('🕶️ Sunglasses','🧴 Sunscreen'); tips.push('High UV — apply sunscreen'); }
+  if (desc.includes('snow')) { items.push('🥾 Snow boots','🧤 Waterproof gloves'); tips.push('Roads may be slippery'); }
+  return { items, tips };
+}
+
+// ── TIME HELPERS ──────────────────────────────────────────────────
+function fmtTime(ts, tz) {
+  const d = new Date((ts+tz)*1000);
+  return d.toUTCString().slice(17,22);
+}
+
+function fmtHour(ts, tz) {
+  const d = new Date((ts+tz)*1000);
+  const h = d.getUTCHours();
+  return h===0?'12am':h<12?`${h}am`:h===12?'12pm':`${h-12}pm`;
+}
+
+function dayName(ts, tz) {
+  const d = new Date((ts+tz)*1000);
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()];
+}
+
+function windDir(deg) {
+  return ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45)%8];
+}
+
+// ── FETCH ─────────────────────────────────────────────────────────
+async function fetchWeather() {
+  const city = document.getElementById('cityInput').value.trim();
+  if (!city) return;
+
+  if (API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
+    showMsg('🔑', 'API key needed', 'Replace YOUR_OPENWEATHERMAP_API_KEY with your key from openweathermap.org');
+    return;
+  }
+
+  showMsg('⏳', 'Fetching weather...', '', true);
+
+  try {
+    const [cur, fore] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`).then(r => { if(!r.ok) throw new Error('city'); return r.json(); }),
+      fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`).then(r => r.json()),
+    ]);
+
+    // UV + Air quality (parallel, using lat/lon)
+    const [uv, air] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/uvi?lat=${cur.coord.lat}&lon=${cur.coord.lon}&appid=${API_KEY}`).then(r=>r.json()).catch(()=>({value:0})),
+      fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${cur.coord.lat}&lon=${cur.coord.lon}&appid=${API_KEY}`).then(r=>r.json()).catch(()=>null),
+    ]);
+
+    render(cur, fore, uv, air);
+  } catch(e) {
+    if (e.message === 'city') showMsg('🔍', 'City not found', 'Check the spelling and try again');
+    else showMsg('📡', 'Connection error', 'Check your internet and try again');
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function render(cur, fore, uv, air) {
+  const tz    = cur.timezone;
+  const temp  = Math.round(cur.main.temp);
+  const feels = Math.round(cur.main.feels_like);
+  const desc  = cur.weather[0].description;
+  const code  = cur.weather[0].id;
+
+  document.body.className = bodyClass(code);
+
+  // Hourly — next 8 slots
+  const hourly = fore.list.slice(0, 8);
+
+  // Daily min/max
+  const minMax = {};
+  fore.list.forEach(f => {
+    const d = new Date((f.dt+tz)*1000);
+    const k = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    if (!minMax[k]) minMax[k] = { min:f.main.temp_min, max:f.main.temp_max };
+    else { minMax[k].min = Math.min(minMax[k].min, f.main.temp_min); minMax[k].max = Math.max(minMax[k].max, f.main.temp_max); }
+  });
+
+  // Daily — noon slot per day
+  const dayMap = {};
+  fore.list.forEach(f => {
+    const d = new Date((f.dt+tz)*1000);
+    const k = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    if (!dayMap[k] || Math.abs(d.getUTCHours()-12) < Math.abs(new Date((dayMap[k].dt+tz)*1000).getUTCHours()-12))
+      dayMap[k] = f;
+  });
+  const daily = Object.values(dayMap).slice(0,7);
+
+  const uvData  = uvInfo(uv.value||0);
+  const uvPct   = Math.min((uv.value||0)/12*100, 100);
+  const fit     = outfit(temp, desc, cur.wind.speed, desc.includes('rain'));
+
+  // Air quality data
+  let airHTML = '';
+  if (air && air.list && air.list[0]) {
+    const aq    = air.list[0];
+    const aqi   = aq.main.aqi;
+    const comp  = aq.components;
+    const info  = aqiInfo(aqi);
+    const aqiPct = (aqi/5)*100;
+
+    airHTML = `
+    <div class="pollution-card">
+      <div class="pollution-header">
+        <div>
+          <div class="section-title" style="margin-bottom:4px">Air Quality Index</div>
+          <div style="font-size:12px;color:var(--dim);font-weight:500">${info.text}</div>
+        </div>
+        <div class="pollution-badge" style="background:${info.bg};color:${info.color}">${info.label}</div>
+      </div>
+      <div class="prog-bar" style="background:linear-gradient(90deg,#4caf50,#8bc34a,#ffeb3b,#ff9800,#f44336)">
+        <div class="prog-marker" style="left:${aqiPct}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:5px;font-weight:600">
+        <span>GOOD</span><span>FAIR</span><span>MODERATE</span><span>POOR</span><span>VERY POOR</span>
+      </div>
+      <div class="pollution-grid">
+        <div class="pollutant">
+          <div class="pollutant-name">PM2.5</div>
+          <div class="pollutant-val" style="color:${getPollColor(comp.pm2_5,12,35)}">${comp.pm2_5.toFixed(1)}</div>
+          <div class="pollutant-unit">μg/m³</div>
+        </div>
+        <div class="pollutant">
+          <div class="pollutant-name">PM10</div>
+          <div class="pollutant-val" style="color:${getPollColor(comp.pm10,20,50)}">${comp.pm10.toFixed(1)}</div>
+          <div class="pollutant-unit">μg/m³</div>
+        </div>
+        <div class="pollutant">
+          <div class="pollutant-name">NO₂</div>
+          <div class="pollutant-val" style="color:${getPollColor(comp.no2,40,200)}">${comp.no2.toFixed(1)}</div>
+          <div class="pollutant-unit">μg/m³</div>
+        </div>
+        <div class="pollutant">
+          <div class="pollutant-name">O₃</div>
+          <div class="pollutant-val" style="color:${getPollColor(comp.o3,60,180)}">${comp.o3.toFixed(1)}</div>
+          <div class="pollutant-unit">μg/m³</div>
+        </div>
+        <div class="pollutant">
+          <div class="pollutant-name">CO</div>
+          <div class="pollutant-val" style="color:${getPollColor(comp.co,4000,10000)}">${(comp.co/1000).toFixed(2)}</div>
+          <div class="pollutant-unit">mg/m³</div>
+        </div>
+        <div class="pollutant">
+          <div class="pollutant-name">SO₂</div>
+          <div class="pollutant-val" style="color:${getPollColor(comp.so2,20,80)}">${comp.so2.toFixed(1)}</div>
+          <div class="pollutant-unit">μg/m³</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('content').innerHTML = `
+  <div class="fade-in">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div>
+        <div class="hero-city">📍 ${cur.name}, ${cur.sys.country}</div>
+        <div class="hero-temp">${temp}°C</div>
+        <div class="hero-desc">${desc}</div>
+        <div class="hero-meta">
+          <span>🌡️ Feels like ${feels}°</span>
+          <span>💧 ${cur.main.humidity}%</span>
+          <span>💨 ${Math.round(cur.wind.speed*3.6)} km/h</span>
+          <span>👁️ ${(cur.visibility/1000).toFixed(1)} km</span>
+        </div>
+      </div>
+      <div class="hero-icon">${icon(code)}</div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-label">UV Index</div>
+        <div class="card-value" style="color:${uvData.color}">${(uv.value||0).toFixed(1)}</div>
+        <div class="card-sub">${uvData.label}</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:${uvPct}%;background:linear-gradient(90deg,#4caf50,#ffeb3b,#f44336)"></div>
+          <div class="prog-marker" style="left:${uvPct}%"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Humidity</div>
+        <div class="card-value">${cur.main.humidity}%</div>
+        <div class="card-sub">${cur.main.humidity>70?'Feels muggy':cur.main.humidity<30?'Very dry':'Comfortable'}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Wind</div>
+        <div class="card-value">${Math.round(cur.wind.speed*3.6)}</div>
+        <div class="card-sub">km/h · ${windDir(cur.wind.deg)}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Pressure</div>
+        <div class="card-value">${cur.main.pressure}</div>
+        <div class="card-sub">hPa · ${cur.main.pressure>1013?'High':'Low'}</div>
+      </div>
+    </div>
+
+    <!-- HOURLY -->
+    <div class="section-title">Hourly Forecast</div>
+    <div class="hourly-row">
+      ${hourly.map((h,i)=>`
+        <div class="hour-card ${i===0?'now':''}">
+          <div class="hour-time">${i===0?'Now':fmtHour(h.dt,tz)}</div>
+          <div class="hour-icon">${icon(h.weather[0].id)}</div>
+          <div class="hour-temp">${Math.round(h.main.temp)}°</div>
+          <div class="hour-rain">${h.pop>0?Math.round(h.pop*100)+'%':''}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- 7-DAY -->
+    <div class="section-title">7-Day Forecast</div>
+    <div class="week-list">
+      ${daily.map((d,i)=>{
+        const dt = new Date((d.dt+tz)*1000);
+        const k = `${dt.getUTCFullYear()}-${dt.getUTCMonth()}-${dt.getUTCDate()}`;
+        const mm = minMax[k]||{min:d.main.temp_min,max:d.main.temp_max};
+        return `<div class="day-row">
+          <div class="day-name">${i===0?'Today':dayName(d.dt,tz)}</div>
+          <div class="day-icon">${icon(d.weather[0].id)}</div>
+          <div class="day-desc">${d.weather[0].description}</div>
+          <div class="day-temps">${Math.round(mm.max)}°<span class="day-low">${Math.round(mm.min)}°</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- AIR QUALITY -->
+    ${airHTML}
+
+    <!-- OUTFIT -->
+    <div class="outfit-card">
+      <div class="section-title" style="margin-bottom:0">What to Wear Today</div>
+      ${fit.tips.length?`<div style="margin-top:7px;font-size:12px;color:var(--accent);font-weight:600">${fit.tips.map(t=>`⚠️ ${t}`).join(' · ')}</div>`:''}
+      <div class="outfit-items">
+        ${fit.items.map(item=>`<div class="outfit-chip">${item}</div>`).join('')}
+      </div>
+    </div>
+
+    <!-- SUNRISE / SUNSET -->
+    <div class="sun-row">
+      <div class="sun-card">
+        <div class="sun-icon">🌅</div>
+        <div><div class="sun-label">Sunrise</div><div class="sun-time">${fmtTime(cur.sys.sunrise,tz)}</div></div>
+      </div>
+      <div class="sun-card">
+        <div class="sun-icon">🌇</div>
+        <div><div class="sun-label">Sunset</div><div class="sun-time">${fmtTime(cur.sys.sunset,tz)}</div></div>
+      </div>
+    </div>
+
+  </div>`;
+}
+
+function getPollColor(val, good, bad) {
+  if (val <= good) return '#4caf50';
+  if (val <= bad)  return '#ff9800';
+  return '#f44336';
+}
+
+function showMsg(ic, title, sub, spin=false) {
+  document.getElementById('content').innerHTML = `
+    <div class="message">
+      <div class="msg-icon">${spin?`<span class="spin">${ic}</span>`:ic}</div>
+      <p>${title}</p>
+      ${sub?`<p class="msg-sub">${sub}</p>`:''}
+    </div>`;
+}
+
+document.getElementById('cityInput').addEventListener('keydown', e => { if(e.key==='Enter') fetchWeather(); });
+if (API_KEY !== 'YOUR_OPENWEATHERMAP_API_KEY') fetchWeather();
+</script>
+</body>
+</html>
